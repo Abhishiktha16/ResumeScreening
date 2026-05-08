@@ -11,11 +11,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.secret_key = 'resume_screen_secret'
+
+# ✅ reads from environment variables on Render, falls back to local values
+app.secret_key = os.environ.get('SECRET_KEY', 'resume_screen_secret')
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
-MAIL_USER = 'mopuriabhi16@gmail.com'
-MAIL_PASS = 'xnow kvjt pyoi pejk'
+MAIL_USER = os.environ.get('MAIL_USER', 'mopuriabhi16@gmail.com')
+MAIL_PASS = os.environ.get('MAIL_PASS', 'xnow kvjt pyoi pejk')
 
 bcrypt = Bcrypt(app)
 
@@ -24,6 +26,8 @@ DB_PATH  = os.path.join(BASE_DIR, 'resume.db')
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+
+# ── DB ────────────────────────────────────────────────────────
 
 def get_db():
     return sqlite3.connect(DB_PATH)
@@ -37,6 +41,40 @@ def parse_datetime(val):
 
 def parse_jobs(raw_jobs):
     return [tuple([*j[:6], parse_datetime(j[6]), *j[7:]]) for j in raw_jobs]
+
+def init_db():
+    conn = get_db(); cur = conn.cursor()
+    cur.executescript("""
+        CREATE TABLE IF NOT EXISTS hr_users (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            email    TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS jobs (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            company         TEXT NOT NULL,
+            job_profile     TEXT NOT NULL,
+            salary          TEXT NOT NULL,
+            job_description TEXT NOT NULL,
+            posted_by       TEXT NOT NULL,
+            posted_at       TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS resumes (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            name        TEXT,
+            email       TEXT,
+            filename    TEXT,
+            job_id      INTEGER,
+            score       REAL,
+            status      TEXT,
+            uploaded_at TEXT,
+            FOREIGN KEY (job_id) REFERENCES jobs(id)
+        );
+    """)
+    conn.commit(); cur.close(); conn.close()
+
+
+# ── PDF ───────────────────────────────────────────────────────
 
 def extract_text_from_pdf(filepath):
     try:
@@ -313,10 +351,18 @@ def job_seeker():
                 return render_template('job_seeker.html', error="Job not found.")
 
             company, job_profile, jd_filename = job
-            score  = calculate_matching_score(
-                extract_text_from_pdf(resume_path),
-                extract_text_from_pdf(os.path.join(app.config['UPLOAD_FOLDER'], jd_filename))
-            )
+            jd_path = os.path.join(app.config['UPLOAD_FOLDER'], jd_filename)
+
+            # ✅ handle missing JD file gracefully on Render
+            if not os.path.exists(jd_path):
+                log.warning(f"JD file missing on server: {jd_filename} — scoring as 0")
+                score = 0
+            else:
+                score = calculate_matching_score(
+                    extract_text_from_pdf(resume_path),
+                    extract_text_from_pdf(jd_path)
+                )
+
             status = "Selected" if score >= 70 else "Rejected"
 
             cur.execute(
@@ -324,7 +370,6 @@ def job_seeker():
                 (name, email, filename, int(job_id), score, status, datetime.now()))
             conn.commit()
 
-            # ✅ direct call — no threading, guaranteed to run
             send_result_email(email, name, job_profile, company, score, status)
 
             cur.close(); conn.close()
@@ -341,5 +386,10 @@ def job_seeker():
     return render_template('job_seeker.html', jobs=jobs)
 
 
+# ── run ───────────────────────────────────────────────────────
+
+with app.app_context():
+    init_db()
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=False, host='0.0.0.0', port=5001)
