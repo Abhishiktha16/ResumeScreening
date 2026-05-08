@@ -57,6 +57,7 @@ def unique_filename(original):
     return f"{uuid.uuid4().hex}{ext}"
 
 def send_result_email(to_email, name, job_profile, company, score, status):
+
     try:
         if status == "Selected":
             subject = f"Congratulations! You're selected for {job_profile} at {company}"
@@ -85,14 +86,13 @@ Best regards,
 {company} HR Team
 ResumeScreen Platform"""
 
-        msg = Message(subject,
-                      sender=app.config['MAIL_USERNAME'],
-                      recipients=[to_email])
         msg.body = body
-        mail.send(msg)
-        print(f"Email sent to {to_email}")
-    except Exception as e:
-        print(f"Email failed: {e}")   # don't crash the app if email fails
+
+try:
+    mail.send(msg)
+    print(f"Email sent to {to_email}")
+except Exception as e:
+    print("Mail error:", e)  # don't crash the app if email fails
 # ── SHARED ──────────────────────────────────────────────────
 
 @app.route('/')
