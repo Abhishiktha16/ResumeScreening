@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 from werkzeug.utils import secure_filename
-import os, sqlite3, uuid
+import os, sqlite3, uuid, threading
 from datetime import datetime
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
@@ -11,14 +11,15 @@ app.secret_key = 'resume_screen_secret'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # MAIL CONFIGURATION
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'mopuriabhi16@gmail.com'
-app.config['MAIL_PASSWORD'] = 'xnowkvjtpyoipejk'
+app.config['MAIL_SERVER']        = 'smtp.gmail.com'
+app.config['MAIL_PORT']          = 587
+app.config['MAIL_USE_TLS']       = True
+app.config['MAIL_USERNAME']      = 'mopuriabhi16@gmail.com'
+app.config['MAIL_PASSWORD']      = 'xnow kvjt pyoi pejk'  # ← spaces added
+app.config['MAIL_DEFAULT_SENDER'] = 'mopuriabhi16@gmail.com'
 
 bcrypt = Bcrypt(app)
-mail = Mail(app)
+mail   = Mail(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH  = os.path.join(BASE_DIR, 'resume.db')
@@ -48,7 +49,7 @@ def extract_text_from_pdf(filepath):
 def calculate_matching_score(resume_text, jd_text):
     if not resume_text or not jd_text:
         return 0
-    r, j = set(resume_text.split()), set(jd_text.split())
+    r, j  = set(resume_text.split()), set(jd_text.split())
     total = r | j
     return round(min(len(r & j) / len(total) * 100, 100), 2) if total else 0
 
@@ -56,44 +57,60 @@ def unique_filename(original):
     ext = os.path.splitext(secure_filename(original))[1]
     return f"{uuid.uuid4().hex}{ext}"
 
+
+# ── EMAIL (runs in background thread so it never blocks the app) ──
+
 def send_result_email(to_email, name, job_profile, company, score, status):
+    """Send email in a background thread — app never waits for this."""
+    def _send():
+        try:
+            if status == "Selected":
+                subject = f"Congratulations! You're selected for {job_profile} at {company}"
+                body = f"""Dear {name},
 
-    try:
-        if status == "Selected":
-            subject = f"Congratulations! You're selected for {job_profile} at {company}"
-            body = f"""Dear {name},
+We are pleased to inform you that your application for {job_profile} at {company} has been reviewed.
 
-We are pleased to inform you that your application for the position of {job_profile} at {company} has been reviewed.
+Your resume matched {score}% with our requirements and you have been SELECTED for the next round.
 
-Your resume matched {score}% with our job requirements, and we are happy to inform you that you have been SELECTED for the next round.
-
-Our HR team will reach out to you shortly with further details.
-
-Best regards,
-{company} HR Team
-ResumeScreen Platform"""
-        else:
-            subject = f"Application Update — {job_profile} at {company}"
-            body = f"""Dear {name},
-
-Thank you for applying for the position of {job_profile} at {company}.
-
-After carefully reviewing your resume, we regret to inform you that your profile does not match our current requirements (match score: {score}%).
-
-We encourage you to apply for future openings that match your skills.
+Our HR team will reach out to you shortly.
 
 Best regards,
 {company} HR Team
 ResumeScreen Platform"""
+            else:
+                subject = f"Application Update — {job_profile} at {company}"
+                body = f"""Dear {name},
 
-        msg.body = body
+Thank you for applying for {job_profile} at {company}.
 
-try:
-    mail.send(msg)
-    print(f"Email sent to {to_email}")
-except Exception as e:
-    print("Mail error:", e)  # don't crash the app if email fails
-# ── SHARED ──────────────────────────────────────────────────
+After reviewing your resume, we regret that your profile does not match our current requirements (match score: {score}%).
+
+We encourage you to apply for future openings.
+
+Best regards,
+{company} HR Team
+ResumeScreen Platform"""
+
+            with app.app_context():
+                msg = Message(
+                    subject,
+                    sender=app.config['MAIL_USERNAME'],
+                    recipients=[to_email]
+                )
+                msg.body = body
+                mail.send(msg)
+                print(f"✅ Email sent to {to_email}")
+
+        except Exception as e:
+            # Log but never crash — email failure should not affect the user
+            print(f"❌ Email failed: {e}")
+
+    # Fire and forget — runs in background
+    thread = threading.Thread(target=_send, daemon=True)
+    thread.start()
+
+
+# ── SHARED ───────────────────────────────────────────────────
 
 @app.route('/')
 def index():
@@ -184,10 +201,10 @@ def post_job():
     if 'hr_email' not in session:
         return redirect(url_for('hr_login'))
     if request.method == 'POST':
-        company  = request.form['company']
-        profile  = request.form['job_profile']
-        salary   = request.form['salary']
-        file     = request.files.get('job_description')
+        company = request.form['company']
+        profile = request.form['job_profile']
+        salary  = request.form['salary']
+        file    = request.files.get('job_description')
         if not file or not file.filename:
             return render_template('post_job.html', error="Please select a PDF file.")
         if not file.filename.lower().endswith('.pdf'):
@@ -291,21 +308,28 @@ def job_seeker():
             if not job:
                 cur.close(); conn.close()
                 return render_template('job_seeker.html', error="Job not found.")
+
             company, job_profile, jd_filename = job
             score  = calculate_matching_score(
                 extract_text_from_pdf(resume_path),
                 extract_text_from_pdf(os.path.join(app.config['UPLOAD_FOLDER'], jd_filename))
             )
             status = "Selected" if score >= 70 else "Rejected"
+
             cur.execute(
                 "INSERT INTO resumes (name,email,filename,job_id,score,status,uploaded_at) VALUES (?,?,?,?,?,?,?)",
                 (name, email, filename, int(job_id), score, status, datetime.now()))
             conn.commit()
+
+            # ✅ Email fires in background — user gets result instantly
             send_result_email(email, name, job_profile, company, score, status)
+
             cur.close(); conn.close()
             return render_template('job_seeker.html', jobs=None,
-                                   applied_job={'id':job_id,'company':company,'job_profile':job_profile},
+                                   applied_job={'id': job_id, 'company': company,
+                                                'job_profile': job_profile},
                                    name=name, score=score, status=status)
+
         except sqlite3.Error as e:
             conn.rollback(); cur.close(); conn.close()
             return render_template('job_seeker.html', error="Database error: " + str(e))
