@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 from werkzeug.utils import secure_filename
-import os, sqlite3, uuid, logging, smtplib
+import os, sqlite3, uuid, smtplib, logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
@@ -11,12 +11,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# ✅ reads from environment variables on Render, falls back to local values
 app.secret_key = os.environ.get('SECRET_KEY', 'resume_screen_secret')
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
-# ✅ credentials come from environment variables ONLY — never hardcoded
-MAIL_USER = os.environ.get('MAIL_USER', '')
-MAIL_PASS = os.environ.get('MAIL_PASS', '')
+MAIL_USER = os.environ.get('MAIL_USER', 'mopuriabhi16@gmail.com')
+MAIL_PASS = os.environ.get('MAIL_PASS', 'yxom bssr tjef onhi')
 
 bcrypt = Bcrypt(app)
 
@@ -71,7 +72,6 @@ def init_db():
         );
     """)
     conn.commit(); cur.close(); conn.close()
-    log.info("Database initialized.")
 
 
 # ── PDF ───────────────────────────────────────────────────────
@@ -98,13 +98,10 @@ def unique_filename(original):
 # ── EMAIL ─────────────────────────────────────────────────────
 
 def send_result_email(to_email, name, job_profile, company, score, status):
-    if not MAIL_USER or not MAIL_PASS:
-        log.warning("Email credentials not set in environment — skipping email.")
-        return
-
-    if status == "Selected":
-        subject = f"Congratulations! Selected for {job_profile} at {company}"
-        body = f"""\
+    try:
+        if status == "Selected":
+            subject = f"Congratulations! Selected for {job_profile} at {company}"
+            body = f"""\
 Dear {name},
 
 Great news! We reviewed your application for {job_profile} at {company}.
@@ -117,9 +114,9 @@ Our HR team will contact you shortly with next steps.
 Best regards,
 {company} HR Team
 ResumeScreen Platform"""
-    else:
-        subject = f"Application Update: {job_profile} at {company}"
-        body = f"""\
+        else:
+            subject = f"Application Update: {job_profile} at {company}"
+            body = f"""\
 Dear {name},
 
 Thank you for applying for {job_profile} at {company}.
@@ -127,13 +124,12 @@ Thank you for applying for {job_profile} at {company}.
 We reviewed your resume (match score: {score}%).
 Result: Not Selected
 
-We encourage you to apply for future openings that match your profile.
+We encourage you to apply for future openings.
 
 Best regards,
 {company} HR Team
 ResumeScreen Platform"""
 
-    try:
         msg = MIMEMultipart()
         msg['From']    = MAIL_USER
         msg['To']      = to_email
@@ -150,9 +146,7 @@ ResumeScreen Platform"""
         log.info(f"SUCCESS — email sent to {to_email}")
 
     except smtplib.SMTPAuthenticationError:
-        log.error("FAILED — Gmail authentication error. Check MAIL_USER and MAIL_PASS env vars.")
-    except smtplib.SMTPException as e:
-        log.error(f"FAILED — SMTP error: {e}")
+        log.error("FAILED — wrong App Password")
     except Exception as e:
         log.error(f"FAILED — {type(e).__name__}: {e}")
 
@@ -359,8 +353,9 @@ def job_seeker():
             company, job_profile, jd_filename = job
             jd_path = os.path.join(app.config['UPLOAD_FOLDER'], jd_filename)
 
+            # ✅ handle missing JD file gracefully on Render
             if not os.path.exists(jd_path):
-                log.warning(f"JD file missing on server: {jd_filename} — score set to 0")
+                log.warning(f"JD file missing on server: {jd_filename} — scoring as 0")
                 score = 0
             else:
                 score = calculate_matching_score(
@@ -391,7 +386,7 @@ def job_seeker():
     return render_template('job_seeker.html', jobs=jobs)
 
 
-# ── startup ───────────────────────────────────────────────────
+# ── run ───────────────────────────────────────────────────────
 
 with app.app_context():
     init_db()
