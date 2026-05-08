@@ -1,30 +1,34 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 from werkzeug.utils import secure_filename
-import os, sqlite3, uuid, threading
+import os, sqlite3, uuid, threading, smtplib, logging
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from flask_bcrypt import Bcrypt
-from flask_mail import Mail, Message
 import pdfplumber
+
+# ── logging so you can see exactly what happens ──
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s %(message)s')
+log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = 'resume_screen_secret'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
-# MAIL CONFIGURATION
-app.config['MAIL_SERVER']        = 'smtp.gmail.com'
-app.config['MAIL_PORT']          = 587
-app.config['MAIL_USE_TLS']       = True
-app.config['MAIL_USERNAME']      = 'mopuriabhi16@gmail.com'
-app.config['MAIL_PASSWORD']      = 'xnow kvjt pyoi pejk'  # ← spaces added
-app.config['MAIL_DEFAULT_SENDER'] = 'mopuriabhi16@gmail.com'
+# ── Gmail credentials ── replace with your actual App Password ──
+MAIL_USER = 'mopuriabhi16@gmail.com'
+MAIL_PASS = 'xnow kvjt pyoi pejk'        # 16-char App Password WITH spaces
 
 bcrypt = Bcrypt(app)
-mail   = Mail(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH  = os.path.join(BASE_DIR, 'resume.db')
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+
+# ── DB helpers ────────────────────────────────────────────────
 
 def get_db():
     return sqlite3.connect(DB_PATH)
@@ -38,6 +42,9 @@ def parse_datetime(val):
 
 def parse_jobs(raw_jobs):
     return [tuple([*j[:6], parse_datetime(j[6]), *j[7:]]) for j in raw_jobs]
+
+
+# ── PDF helpers ───────────────────────────────────────────────
 
 def extract_text_from_pdf(filepath):
     try:
@@ -58,56 +65,88 @@ def unique_filename(original):
     return f"{uuid.uuid4().hex}{ext}"
 
 
-# ── EMAIL (runs in background thread so it never blocks the app) ──
+# ── EMAIL ─────────────────────────────────────────────────────
+# Uses raw smtplib instead of Flask-Mail so it works reliably
+# in background threads with no Flask context issues.
 
-def send_result_email(to_email, name, job_profile, company, score, status):
-    """Send email in a background thread — app never waits for this."""
-    def _send():
-        try:
-            if status == "Selected":
-                subject = f"Congratulations! You're selected for {job_profile} at {company}"
-                body = f"""Dear {name},
+def _build_email_body(name, job_profile, company, score, status):
+    if status == "Selected":
+        subject = f"Congratulations! Selected for {job_profile} at {company}"
+        body = f"""\
+Dear {name},
 
-We are pleased to inform you that your application for {job_profile} at {company} has been reviewed.
+Great news! We reviewed your application for {job_profile} at {company}.
 
-Your resume matched {score}% with our requirements and you have been SELECTED for the next round.
+Your resume matched {score}% with our job requirements.
+Result: SELECTED ✅
 
-Our HR team will reach out to you shortly.
+Our HR team will contact you shortly with next steps.
 
 Best regards,
 {company} HR Team
-ResumeScreen Platform"""
-            else:
-                subject = f"Application Update — {job_profile} at {company}"
-                body = f"""Dear {name},
+— ResumeScreen Platform
+"""
+    else:
+        subject = f"Application Update: {job_profile} at {company}"
+        body = f"""\
+Dear {name},
 
 Thank you for applying for {job_profile} at {company}.
 
-After reviewing your resume, we regret that your profile does not match our current requirements (match score: {score}%).
+We carefully reviewed your resume (match score: {score}%).
+Result: Not Selected ❌
 
-We encourage you to apply for future openings.
+We appreciate your interest and encourage you to apply for
+future openings that match your profile.
 
 Best regards,
 {company} HR Team
-ResumeScreen Platform"""
+— ResumeScreen Platform
+"""
+    return subject, body
 
-            with app.app_context():
-                msg = Message(
-                    subject,
-                    sender=app.config['MAIL_USERNAME'],
-                    recipients=[to_email]
-                )
-                msg.body = body
-                mail.send(msg)
-                print(f"✅ Email sent to {to_email}")
 
+def send_result_email(to_email, name, job_profile, company, score, status):
+    """
+    Sends result email in a background thread using raw smtplib.
+    Never blocks the main app. Never crashes the app on failure.
+    Check your terminal for SUCCESS / FAILED logs.
+    """
+    subject, body = _build_email_body(name, job_profile, company, score, status)
+
+    def _send():
+        try:
+            log.info(f"Sending email to {to_email} ...")
+
+            # Build the message
+            msg = MIMEMultipart()
+            msg['From']    = MAIL_USER
+            msg['To']      = to_email
+            msg['Subject'] = subject
+            msg.attach(MIMEText(body, 'plain'))
+
+            # Connect and send via raw smtplib — most reliable method
+            with smtplib.SMTP('smtp.gmail.com', 587, timeout=15) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(MAIL_USER, MAIL_PASS)
+                server.sendmail(MAIL_USER, to_email, msg.as_string())
+
+            log.info(f"SUCCESS — email delivered to {to_email}")
+
+        except smtplib.SMTPAuthenticationError:
+            log.error("FAILED — Gmail authentication error. "
+                      "Check your App Password. Make sure 2FA is ON "
+                      "and you generated the App Password AFTER enabling 2FA.")
+        except smtplib.SMTPException as e:
+            log.error(f"FAILED — SMTP error: {e}")
         except Exception as e:
-            # Log but never crash — email failure should not affect the user
-            print(f"❌ Email failed: {e}")
+            log.error(f"FAILED — Unexpected error: {e}")
 
-    # Fire and forget — runs in background
-    thread = threading.Thread(target=_send, daemon=True)
-    thread.start()
+    # Fire in background — user sees result instantly
+    t = threading.Thread(target=_send, daemon=True)
+    t.start()
 
 
 # ── SHARED ───────────────────────────────────────────────────
@@ -321,7 +360,7 @@ def job_seeker():
                 (name, email, filename, int(job_id), score, status, datetime.now()))
             conn.commit()
 
-            # ✅ Email fires in background — user gets result instantly
+            # fires in background — never blocks the response
             send_result_email(email, name, job_profile, company, score, status)
 
             cur.close(); conn.close()
