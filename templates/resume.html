@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Resume Screening System</title>
+  <style>
+    body {
+      font-family: Arial;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to right, #c2e9fb, #f9f586, #fdb99b);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 30px;
+      background-color: #fefefe;
+      box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .logo {
+      height: 40px;
+    }
+    .title {
+      font-weight: bold;
+      font-size: 20px;
+      margin-top: 10px;
+    }
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: calc(100vh - 60px);
+    }
+    .card {
+      background: #fff7f0;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+      margin: 20px;
+    }
+    .login-btn {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .login-btn:hover {
+      background-color: #0056b3;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    .hidden {
+      display: none;
+    }
+    .success-msg {
+      color: green;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <img src="logo.png" alt="Logo" class="logo" />
+    <div class="title">Resume Screening System</div>
+  </div>
+
+  <div class="container">
+
+    <!-- Login Panel -->
+    <div class="card" id="loginPanel">
+      <h2>Login</h2>
+      <button class="login-btn" onclick="showHRLogin()">🧑‍💼 HR Login</button>
+      <button class="login-btn" onclick="showJobSeekerForm()">⚠️ Job Seeker Login</button>
+    </div>
+
+    <!-- Job Seeker Apply Form -->
+    <div class="card hidden" id="jobSeekerForm">
+      <h2>Job Seeker – Apply for Job</h2>
+      <form id="applyForm" onsubmit="submitApplication(event)">
+        <input type="text" placeholder="Enter your name" id="name" required />
+        <input type="email" placeholder="Enter your email" id="email" required />
+        <input type="file" id="resume" required />
+        <button class="login-btn" type="submit">📄 Apply</button>
+        <p class="success-msg hidden" id="successMsg"></p>
+        <button class="login-btn" type="button" onclick="backToLogin()">🔙 Back to Login</button>
+      </form>
+    </div>
+
+  </div>
+
+  <script>
+    function showJobSeekerForm() {
+      document.getElementById('loginPanel').classList.add('hidden');
+      document.getElementById('jobSeekerForm').classList.remove('hidden');
+    }
+
+    function backToLogin() {
+      document.getElementById('loginPanel').classList.remove('hidden');
+      document.getElementById('jobSeekerForm').classList.add('hidden');
+      document.getElementById('successMsg').classList.add('hidden');
+    }
+
+    function submitApplication(event) {
+      event.preventDefault();
+      const name = document.getElementById('name').value;
+      document.getElementById('successMsg').textContent = `Application received for ${name}!`;
+      document.getElementById('successMsg').classList.remove('hidden');
+    }
+
+    function showHRLogin() {
+      alert("Redirect to HR Login page (implement this if needed).");
+    }
+  </script>
+
+</body>
+</html>

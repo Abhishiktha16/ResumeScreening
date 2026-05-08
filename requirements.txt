@@ -1,0 +1,5 @@
+Flask
+flask-bcrypt
+flask-mail
+pdfplumber
+gunicorn

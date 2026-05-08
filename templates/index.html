@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ResumeScreen — Smart Hiring Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <style>
+    :root {
+      --navy: #0f1f3d;
+      --blue: #2563eb;
+      --blue-light: #3b82f6;
+      --accent: #f59e0b;
+      --white: #ffffff;
+      --glass: rgba(255,255,255,0.08);
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f1f3d 0%, #1e3a8a 50%, #1e40af 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+
+    /* animated background circles */
+    body::before, body::after {
+      content: '';
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.03);
+      animation: float 8s ease-in-out infinite;
+    }
+    body::before { width:500px; height:500px; top:-100px; right:-100px; }
+    body::after  { width:350px; height:350px; bottom:-80px; left:-80px; animation-delay:3s; }
+    @keyframes float {
+      0%,100% { transform: translateY(0) scale(1); }
+      50%      { transform: translateY(-20px) scale(1.03); }
+    }
+
+    .card {
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      padding: 3rem 3.5rem;
+      text-align: center;
+      max-width: 560px; width: 90%;
+      position: relative; z-index: 1;
+      animation: rise .6s cubic-bezier(.22,.61,.36,1) both;
+    }
+    @keyframes rise {
+      from { opacity:0; transform:translateY(30px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    .logo {
+      display: inline-flex; align-items: center; gap: .6rem;
+      margin-bottom: 1rem;
+    }
+    .logo-icon {
+      width: 48px; height: 48px; background: var(--blue);
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; color: #fff;
+    }
+    .logo-text {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.6rem; color: #fff; letter-spacing: -.5px;
+    }
+
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.2rem; color: #fff;
+      line-height: 1.2; margin-bottom: .75rem;
+    }
+    p.sub {
+      color: rgba(255,255,255,.65); font-size: 1rem;
+      margin-bottom: 2.5rem; line-height: 1.6;
+    }
+
+    .btn-group {
+      display: flex; flex-direction: column; gap: .85rem;
+    }
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: .6rem;
+      padding: .9rem 1.5rem; border-radius: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem; font-weight: 600;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: transform .2s, box-shadow .2s, background .2s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+
+    .btn-hr {
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(37,99,235,.4);
+    }
+    .btn-hr:hover { background: #1d4ed8; box-shadow: 0 6px 24px rgba(37,99,235,.55); }
+
+    .btn-register {
+      background: rgba(255,255,255,.1);
+      color: #fff; border: 1px solid rgba(255,255,255,.2);
+    }
+    .btn-register:hover { background: rgba(255,255,255,.18); }
+
+    .btn-seeker {
+      background: var(--accent);
+      color: #0f1f3d;
+      box-shadow: 0 4px 20px rgba(245,158,11,.35);
+    }
+    .btn-seeker:hover { background: #d97706; box-shadow: 0 6px 24px rgba(245,158,11,.5); }
+
+    .divider {
+      display: flex; align-items: center; gap: .75rem;
+      margin: .4rem 0; color: rgba(255,255,255,.3); font-size: .8rem;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px;
+      background: rgba(255,255,255,.12);
+    }
+
+    @media(max-width:480px) {
+      .card { padding: 2rem 1.5rem; }
+      h1 { font-size: 1.7rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon"><i class="fas fa-file-alt"></i></div>
+      <span class="logo-text">ResumeScreen</span>
+    </div>
+
+    <h1>Smart Resume Screening Platform</h1>
+    <p class="sub">AI-powered matching between job descriptions and candidate resumes — hire faster, hire better.</p>
+
+    <div class="btn-group">
+      <a href="{{ url_for('hr_login') }}" class="btn btn-hr">
+        <i class="fas fa-user-tie"></i> HR Login
+      </a>
+      <a href="{{ url_for('register') }}" class="btn btn-register">
+        <i class="fas fa-user-plus"></i> Register as HR
+      </a>
+      <div class="divider">or</div>
+      <a href="{{ url_for('job_seeker') }}" class="btn btn-seeker">
+        <i class="fas fa-search"></i> Browse Jobs as Seeker
+      </a>
+    </div>
+  </div>
+</body>
+</html>

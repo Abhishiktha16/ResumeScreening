@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Applicants — ResumeScreen</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    :root { --blue:#2563eb; --navy:#0f1f3d; }
+
+    body { font-family:'DM Sans',sans-serif; background:#f0f4f8; color:#1e293b; min-height:100vh; }
+
+    nav {
+      background:linear-gradient(135deg,#0f1f3d,#1e3a8a);
+      padding:1rem 2rem; position:sticky; top:0; z-index:1000;
+      box-shadow:0 2px 16px rgba(0,0,0,.2);
+    }
+    .nav-container { max-width:1200px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+    .nav-logo { color:#fff; font-family:'DM Serif Display',serif; font-size:1.4rem; text-decoration:none; display:flex; align-items:center; gap:.5rem; }
+    nav ul { display:flex; list-style:none; gap:.5rem; }
+    nav ul li a {
+      color:rgba(255,255,255,.85); text-decoration:none; font-size:.9rem; font-weight:500;
+      padding:.45rem .9rem; border-radius:8px; display:flex; align-items:center; gap:.4rem;
+      transition:background .2s;
+    }
+    nav ul li a:hover { background:rgba(255,255,255,.12); color:#fff; }
+    nav ul li a.logout { color:#fca5a5; }
+    nav ul li a.logout:hover { background:rgba(239,68,68,.15); }
+
+    .container { max-width:1100px; margin:2rem auto; padding:0 1.5rem 3rem; }
+
+    .page-header { margin-bottom:1.5rem; }
+    .page-header h2 { font-family:'DM Serif Display',serif; font-size:1.6rem; color:var(--navy); display:flex; align-items:center; gap:.5rem; }
+    .page-header p { color:#64748b; font-size:.88rem; margin-top:.3rem; }
+
+    .controls { display:flex; gap:.7rem; flex-wrap:wrap; margin-bottom:1.5rem; align-items:center; }
+    .btn {
+      padding:.5rem 1.1rem; border:none; border-radius:8px;
+      font-family:'DM Sans',sans-serif; font-size:.85rem; font-weight:600; cursor:pointer;
+      display:inline-flex; align-items:center; gap:.4rem;
+      text-decoration:none; transition:opacity .2s, transform .2s;
+    }
+    .btn:hover { opacity:.87; transform:translateY(-1px); }
+    .btn-back   { background:#e2e8f0; color:#1e293b; }
+    .btn-rank   { background:#7c3aed; color:#fff; }
+    .btn-unrank { background:#0ea5e9; color:#fff; }
+
+    .ranked-badge {
+      display:inline-flex; align-items:center; gap:.35rem;
+      background:#fef9c3; color:#854d0e; border:1px solid #fde68a;
+      padding:.3rem .85rem; border-radius:20px; font-size:.8rem; font-weight:600;
+    }
+
+    .empty {
+      text-align:center; padding:3rem; color:#94a3b8;
+      background:#fff; border-radius:12px; font-size:1rem;
+      box-shadow:0 2px 8px rgba(0,0,0,.05);
+    }
+
+    .table-wrap { overflow-x:auto; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+
+    table { width:100%; border-collapse:collapse; font-size:.87rem; }
+    thead tr { background:linear-gradient(90deg,#0f1f3d,#2563eb); color:#fff; }
+    thead th { padding:.9rem 1rem; text-align:left; font-weight:600; white-space:nowrap; }
+    tbody tr { border-bottom:1px solid #f1f5f9; transition:background .15s; }
+    tbody tr:last-child { border-bottom:none; }
+    tbody tr:hover { background:#f8fafc; }
+    td { padding:.8rem 1rem; vertical-align:middle; color:#374151; }
+
+    .rank-cell { font-weight:700; font-size:1rem; text-align:center; }
+    .rank-1 { color:#f59e0b; }
+    .rank-2 { color:#94a3b8; }
+    .rank-3 { color:#b45309; }
+
+    .score-wrap { display:flex; align-items:center; gap:.55rem; min-width:120px; }
+    .score-bar-bg { flex:1; height:7px; background:#e2e8f0; border-radius:99px; overflow:hidden; }
+    .score-bar-fill { height:100%; border-radius:99px; }
+    .score-num { font-weight:700; font-size:.85rem; white-space:nowrap; }
+
+    .status-badge {
+      display:inline-flex; align-items:center; gap:.3rem;
+      padding:.25rem .7rem; border-radius:20px; font-size:.77rem; font-weight:600;
+    }
+    .status-selected { background:#f0fdf4; color:#16a34a; }
+    .status-rejected { background:#fef2f2; color:#dc2626; }
+
+    .resume-link { color:var(--blue); text-decoration:none; font-weight:500; display:inline-flex; align-items:center; gap:.3rem; }
+    .resume-link:hover { text-decoration:underline; }
+
+    @media(max-width:640px) {
+      .controls { flex-direction:column; }
+      .btn { width:100%; justify-content:center; }
+      thead th, td { padding:.6rem .7rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-container">
+    <a href="{{ url_for('hr_dash') }}" class="nav-logo"><i class="fas fa-file-alt"></i> ResumeScreen</a>
+    <ul>
+      <li><a href="{{ url_for('hr_dash') }}"><i class="fas fa-home"></i> Dashboard</a></li>
+      <li><a href="{{ url_for('post_job') }}"><i class="fas fa-plus"></i> Post Job</a></li>
+      <li><a href="{{ url_for('logout') }}" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h2><i class="fas fa-users"></i> {{ job[2] }} at {{ job[1] }}</h2>
+    <p>Salary: {{ job[3] }} &nbsp;·&nbsp; Job ID: #{{ job[0] }}</p>
+  </div>
+
+  <div class="controls">
+    <a href="{{ url_for('hr_dash') }}" class="btn btn-back"><i class="fas fa-arrow-left"></i> Back</a>
+    {% if ranked %}
+      <a href="{{ url_for('job_applicants', job_id=job[0]) }}" class="btn btn-unrank">
+        <i class="fas fa-list"></i> Submission Order
+      </a>
+      <span class="ranked-badge"><i class="fas fa-trophy"></i> Ranked by Score</span>
+    {% else %}
+      <a href="{{ url_for('job_applicants', job_id=job[0], ranked=1) }}" class="btn btn-rank">
+        <i class="fas fa-trophy"></i> Rank by Score
+      </a>
+    {% endif %}
+  </div>
+
+  {% if applicants %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Score</th>
+            <th>Status</th>
+            <th>Resume</th>
+            <th>Applied On</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in applicants %}
+            {% set score = app[4] %}
+            {% if score >= 75 %}{% set bar_color = '#16a34a' %}
+            {% elif score >= 50 %}{% set bar_color = '#f59e0b' %}
+            {% else %}{% set bar_color = '#ef4444' %}{% endif %}
+            <tr>
+              <td class="rank-cell {% if ranked %}{% if app[0]==1 %}rank-1{% elif app[0]==2 %}rank-2{% elif app[0]==3 %}rank-3{% endif %}{% endif %}">
+                {% if ranked and app[0] <= 3 %}<i class="fas fa-medal"></i> {% endif %}{{ app[0] }}
+              </td>
+              <td><strong>{{ app[1] }}</strong></td>
+              <td>{{ app[2] }}</td>
+              <td>
+                <div class="score-wrap">
+                  <div class="score-bar-bg">
+                    <div class="score-bar-fill" style="width:{{ score }}%;background:{{ bar_color }};"></div>
+                  </div>
+                  <span class="score-num" style="color:{{ bar_color }};">{{ score }}%</span>
+                </div>
+              </td>
+              <td>
+                <span class="status-badge {% if app[5]=='Selected' %}status-selected{% else %}status-rejected{% endif %}">
+                  <i class="fas {% if app[5]=='Selected' %}fa-check-circle{% else %}fa-times-circle{% endif %}"></i>
+                  {{ app[5] }}
+                </span>
+              </td>
+              <td>
+                <a href="{{ url_for('uploaded_file', filename=app[3]) }}" target="_blank" class="resume-link">
+                  <i class="fas fa-file-pdf"></i> View PDF
+                </a>
+              </td>
+              <td>{{ app[6].strftime('%d %b %Y') if app[6] else '—' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <i class="fas fa-inbox fa-2x" style="display:block;margin-bottom:.75rem;"></i>
+      No applications yet for this job.
+    </div>
+  {% endif %}
+</div>
+</body>
+</html>

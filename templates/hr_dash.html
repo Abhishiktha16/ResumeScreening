@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HR Dashboard — ResumeScreen</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    :root { --blue:#2563eb; --navy:#0f1f3d; --accent:#f59e0b; }
+
+    body {
+      font-family:'DM Sans',sans-serif;
+      background:#f0f4f8; color:#1e293b; min-height:100vh;
+    }
+
+    nav {
+      background:linear-gradient(135deg,#0f1f3d,#1e3a8a);
+      padding:1rem 2rem; position:sticky; top:0; z-index:1000;
+      box-shadow:0 2px 16px rgba(0,0,0,.2);
+    }
+    .nav-container {
+      max-width:1200px; margin:0 auto;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .nav-logo {
+      color:#fff; font-family:'DM Serif Display',serif;
+      font-size:1.4rem; text-decoration:none;
+      display:flex; align-items:center; gap:.5rem;
+    }
+    nav ul { display:flex; list-style:none; gap:.5rem; }
+    nav ul li a {
+      color:rgba(255,255,255,.85); text-decoration:none;
+      font-size:.9rem; font-weight:500;
+      padding:.45rem .9rem; border-radius:8px;
+      display:flex; align-items:center; gap:.4rem;
+      transition:background .2s, color .2s;
+    }
+    nav ul li a:hover { background:rgba(255,255,255,.12); color:#fff; }
+    nav ul li a.logout { color:#fca5a5; }
+    nav ul li a.logout:hover { background:rgba(239,68,68,.15); color:#f87171; }
+
+    .container {
+      max-width:1200px; margin:2rem auto; padding:0 1.5rem 3rem;
+    }
+
+    /* top bar */
+    .topbar {
+      display:flex; justify-content:space-between; align-items:center;
+      flex-wrap:wrap; gap:1rem; margin-bottom:1.75rem;
+    }
+    .welcome-text h1 {
+      font-family:'DM Serif Display',serif;
+      font-size:1.7rem; color:var(--navy);
+    }
+    .welcome-text p { color:#64748b; font-size:.9rem; margin-top:.2rem; }
+
+    .search-wrap {
+      display:flex; gap:.6rem; flex:1; max-width:400px;
+    }
+    .search-wrap input {
+      flex:1; padding:.65rem 1rem; font-family:'DM Sans',sans-serif;
+      font-size:.9rem; border:1.5px solid #e2e8f0; border-radius:9px;
+      outline:none; background:#fff;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+
+    /* stats */
+    .stats { display:flex; gap:1rem; margin-bottom:1.75rem; flex-wrap:wrap; }
+    .stat-card {
+      flex:1; min-width:140px; background:#fff; border-radius:14px;
+      padding:1.1rem 1.3rem; box-shadow:0 1px 6px rgba(0,0,0,.07);
+      border-left:4px solid var(--blue);
+    }
+    .stat-card .num { font-size:1.8rem; font-weight:700; color:var(--navy); line-height:1; }
+    .stat-card .lbl { font-size:.8rem; color:#94a3b8; margin-top:.2rem; }
+
+    /* grid */
+    .job-grid { display:grid; gap:1.1rem; }
+
+    .job-card {
+      background:#fff; border-radius:14px;
+      border:1px solid #e8edf4; border-left:5px solid var(--blue);
+      padding:1.3rem 1.5rem;
+      box-shadow:0 2px 8px rgba(0,0,0,.05);
+      transition:transform .25s, box-shadow .25s;
+      animation:fadeUp .35s ease both;
+    }
+    .job-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,0,0,.1); }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+    .job-header {
+      display:flex; justify-content:space-between; align-items:flex-start;
+      flex-wrap:wrap; gap:.5rem; margin-bottom:.75rem;
+    }
+    .job-header h3 { font-size:1.1rem; font-weight:700; color:var(--navy); }
+
+    .badge {
+      display:inline-flex; align-items:center; gap:.3rem;
+      padding:.28rem .75rem; border-radius:20px; font-size:.78rem; font-weight:600;
+    }
+    .badge-green { background:#f0fdf4; color:#16a34a; }
+    .badge-gray  { background:#f1f5f9; color:#64748b; }
+
+    .job-meta { display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; margin-bottom:.75rem; }
+    .job-meta span { font-size:.86rem; color:#475569; display:flex; align-items:center; gap:.3rem; }
+    .job-meta a { color:var(--blue); text-decoration:none; font-weight:500; }
+    .job-meta a:hover { text-decoration:underline; }
+
+    .posted-by { font-size:.78rem; color:#94a3b8; margin-bottom:1rem; }
+
+    .job-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
+    .btn {
+      padding:.48rem 1rem; border:none; border-radius:8px;
+      font-family:'DM Sans',sans-serif; font-size:.83rem; font-weight:600;
+      cursor:pointer; display:inline-flex; align-items:center; gap:.35rem;
+      text-decoration:none; transition:opacity .2s, transform .2s;
+    }
+    .btn:hover { opacity:.87; transform:translateY(-1px); }
+    .btn-view   { background:#2563eb; color:#fff; }
+    .btn-rank   { background:#7c3aed; color:#fff; }
+    .btn-delete { background:#ef4444; color:#fff; }
+
+    .alert-error {
+      background:#fef2f2; border:1px solid #fecaca; color:#dc2626;
+      padding:.8rem 1rem; border-radius:10px; margin-bottom:1.25rem;
+      font-size:.88rem; display:flex; align-items:center; gap:.5rem;
+    }
+
+    .no-jobs {
+      text-align:center; padding:3rem; background:#fff;
+      border-radius:14px; color:#94a3b8;
+      box-shadow:0 2px 8px rgba(0,0,0,.05);
+    }
+    .no-jobs i { display:block; margin-bottom:1rem; }
+    .no-jobs a { color:var(--blue); font-weight:600; text-decoration:none; }
+
+    @media(max-width:640px) {
+      .topbar { flex-direction:column; align-items:stretch; }
+      .search-wrap { max-width:100%; }
+      .job-actions { flex-direction:column; }
+      .btn { justify-content:center; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-container">
+    <a href="{{ url_for('hr_dash') }}" class="nav-logo">
+      <i class="fas fa-file-alt"></i> ResumeScreen
+    </a>
+    <ul>
+      <li><a href="{{ url_for('hr_dash') }}"><i class="fas fa-home"></i> Dashboard</a></li>
+      <li><a href="{{ url_for('post_job') }}"><i class="fas fa-plus"></i> Post Job</a></li>
+      <li><a href="{{ url_for('logout') }}" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="container">
+
+  <div class="topbar">
+    <div class="welcome-text">
+      <h1>Welcome back!</h1>
+      <p><i class="fas fa-envelope" style="font-size:.8rem"></i> {{ hr_email }}</p>
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="searchInput" placeholder="Search jobs…" oninput="filterJobs()">
+    </div>
+  </div>
+
+  {% if error %}
+    <div class="alert-error"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+  {% endif %}
+
+  <!-- stats -->
+  {% if jobs %}
+  <div class="stats">
+    <div class="stat-card">
+      <div class="num">{{ jobs|length }}</div>
+      <div class="lbl">Jobs Posted</div>
+    </div>
+    <div class="stat-card" style="border-color:#16a34a;">
+      <div class="num">{{ jobs|sum(attribute=7) }}</div>
+      <div class="lbl">Total Applicants</div>
+    </div>
+    <div class="stat-card" style="border-color:#f59e0b;">
+      <div class="num">{{ jobs|selectattr(7,'gt',0)|list|length }}</div>
+      <div class="lbl">Jobs with Applicants</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="job-grid" id="jobListings">
+    {% if jobs %}
+      {% for job in jobs %}
+        <div class="job-card" data-title="{{ job[2]|lower }} {{ job[1]|lower }}">
+          <div class="job-header">
+            <h3><i class="fas fa-building" style="color:#3b82f6;margin-right:.3rem"></i>{{ job[2] }} — {{ job[1] }}</h3>
+            <span class="badge {% if job[7] > 0 %}badge-green{% else %}badge-gray{% endif %}">
+              <i class="fas fa-users"></i> {{ job[7] }} applicant{{ 's' if job[7] != 1 else '' }}
+            </span>
+          </div>
+
+          <div class="job-meta">
+            <span><i class="fas fa-rupee-sign"></i> {{ job[3] }}</span>
+            <span><i class="fas fa-file-pdf"></i>
+              <a href="{{ url_for('uploaded_file', filename=job[4]) }}" target="_blank">View JD</a>
+            </span>
+          </div>
+
+          <p class="posted-by">
+            <i class="fas fa-clock"></i> Posted on {{ job[6].strftime('%d %b %Y') }}
+          </p>
+
+          <div class="job-actions">
+            <a href="{{ url_for('job_applicants', job_id=job[0]) }}" class="btn btn-view">
+              <i class="fas fa-eye"></i> View Applicants
+            </a>
+            <a href="{{ url_for('job_applicants', job_id=job[0], ranked=1) }}" class="btn btn-rank">
+              <i class="fas fa-trophy"></i> Rank by Score
+            </a>
+            <form method="POST" action="{{ url_for('delete_job', job_id=job[0]) }}"
+                  onsubmit="return confirm('Delete this job and all applicant data? This cannot be undone.');">
+              <button type="submit" class="btn btn-delete">
+                <i class="fas fa-trash"></i> Delete
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="no-jobs">
+        <i class="fas fa-inbox fa-2x"></i>
+        No jobs posted yet. <a href="{{ url_for('post_job') }}">Post your first job!</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  function filterJobs() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('.job-card').forEach(c => {
+      c.style.display = c.dataset.title.includes(q) ? '' : 'none';
+    });
+  }
+</script>
+</body>
+</html>
